@@ -4,7 +4,6 @@ import {
   COLOR_PALETTE,
   DEFAULT_STICKY_NOTE_SIZE,
   KEYS,
-  STICKY_NOTE_MIN_FONT_SIZE,
   arrayToMap,
 } from "@excalidraw/common";
 import { queryByTestId } from "@testing-library/react";
@@ -140,7 +139,7 @@ describe("sticky notes", () => {
     await act(async () => {});
   });
 
-  it("keeps arrows bound to a note attached while typing grows it", async () => {
+  it("keeps arrows bound to a note attached while typing overflows its viewport", async () => {
     const { note, label } = createNote({
       id: "note",
       text: "short",
@@ -175,7 +174,7 @@ describe("sticky notes", () => {
     updateTextEditor(editor, LONG_TEXT);
 
     const grown = getElement<ExcalidrawStickyNoteElement>(note.id);
-    expect(grown.height).toBeGreaterThan(heightBefore);
+    expect(grown.height).toBe(heightBefore);
     expect(grown.baseHeight).toBe(DEFAULT_STICKY_NOTE_SIZE);
     // the bottom edge moved by the growth, and so did the arrow's end (the
     // orbit ring re-solves the exact contact point, hence the tolerance)
@@ -184,9 +183,7 @@ describe("sticky notes", () => {
     expect(Math.abs(endDelta - growth)).toBeLessThan(10);
 
     Keyboard.keyPress(KEYS.ESCAPE, editor);
-    expect(getElement<ExcalidrawTextElement>(label.id).fontSize).toBe(
-      STICKY_NOTE_MIN_FONT_SIZE,
-    );
+    expect(getElement<ExcalidrawTextElement>(label.id).fontSize).toBe(28);
   });
 
   it("binds free text with a seeded ceiling and unbinding returns the note to its base height", () => {
@@ -216,9 +213,9 @@ describe("sticky notes", () => {
     const grown = getElement<ExcalidrawStickyNoteElement>(note.id);
     expect(label.containerId).toBe(note.id);
     expect(label.baseFontSize).toBe(28);
-    expect(label.fontSize).toBe(STICKY_NOTE_MIN_FONT_SIZE);
+    expect(label.fontSize).toBe(28);
     expect(grown.baseHeight).toBe(DEFAULT_STICKY_NOTE_SIZE);
-    expect(grown.height).toBeGreaterThan(DEFAULT_STICKY_NOTE_SIZE);
+    expect(grown.height).toBe(DEFAULT_STICKY_NOTE_SIZE);
 
     API.setSelectedElements([grown]);
     API.executeAction(actionUnbindText);
@@ -232,7 +229,7 @@ describe("sticky notes", () => {
     expect(emptied.height).toBe(DEFAULT_STICKY_NOTE_SIZE);
   });
 
-  it("pasting styles onto a grown note lays out the note together with its label", () => {
+  it("pasting styles onto an overflowing note lays out the note together with its label", () => {
     const source = createNote({
       id: "source",
       x: 600,
@@ -246,7 +243,7 @@ describe("sticky notes", () => {
     const grownHeight = getElement<ExcalidrawStickyNoteElement>(
       target.note.id,
     ).height;
-    expect(grownHeight).toBeGreaterThan(DEFAULT_STICKY_NOTE_SIZE);
+    expect(grownHeight).toBe(DEFAULT_STICKY_NOTE_SIZE);
 
     API.setSelectedElements([getElement(source.note.id)]);
     API.executeAction(actionCopyStyles);
@@ -259,7 +256,7 @@ describe("sticky notes", () => {
     expect(label.baseFontSize).toBe(10);
     // the note shrank with its smaller label, and the pair is self-consistent
     // (no phantom container: the returned note carries the new layout)
-    expect(note.height).toBeLessThan(grownHeight);
+    expect(note.height).toBe(grownHeight);
     const layout = getStickyNoteLayout(note, label);
     expect(note.height).toBeCloseTo(layout.container.height);
     expect(label.fontSize).toBe(layout.text!.fontSize);
@@ -497,11 +494,9 @@ describe("sticky notes", () => {
       return note.y + note.height;
     };
 
-    it("follow the note back to its base height on unbind", () => {
+    it("stay attached when overflowing text is unbound", () => {
       const { note, arrow } = createNoteWithArrow(LONG_TEXT);
-      expect(getElement(note.id).height).toBeGreaterThan(
-        DEFAULT_STICKY_NOTE_SIZE,
-      );
+      expect(getElement(note.id).height).toBe(DEFAULT_STICKY_NOTE_SIZE);
       const gap = arrowEndY(arrow.id) - noteBottom(note.id);
 
       API.setSelectedElements([getElement(note.id)]);
@@ -542,7 +537,7 @@ describe("sticky notes", () => {
       expect(arrowEndY(arrow.id) - noteBottom(note.id)).toBeCloseTo(gap, 0);
     });
 
-    it("follow a font-size change that grows the note", () => {
+    it("stay attached when font size increases without growing the note", () => {
       // 12 lines at a 12px ceiling fit the base height; at 20 they don't
       const twelveLines = Array(12).fill("abcdefghij").join("\n");
       const { note, label, arrow } = createNoteWithArrow(twelveLines, 12);
@@ -555,9 +550,7 @@ describe("sticky notes", () => {
       });
 
       expect(getElement<ExcalidrawTextElement>(label.id).baseFontSize).toBe(20);
-      expect(getElement(note.id).height).toBeGreaterThan(
-        DEFAULT_STICKY_NOTE_SIZE,
-      );
+      expect(getElement(note.id).height).toBe(DEFAULT_STICKY_NOTE_SIZE);
       expect(arrowEndY(arrow.id) - noteBottom(note.id)).toBeCloseTo(gap, 0);
     });
 

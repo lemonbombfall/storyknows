@@ -27,3 +27,12 @@ dev-dist
 html
 meta*.json
 .claude
+
+# Private environment files; retain public upstream defaults and safe templates.
+.env
+.env.*
+!.env.development
+!.env.production
+!.env.test
+!.env.example
+!.env.*.example

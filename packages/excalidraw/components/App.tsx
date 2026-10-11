@@ -1,4 +1,5 @@
 import clsx from "clsx";
+
 import throttle from "lodash.throttle";
 import React, { useContext } from "react";
 import { flushSync } from "react-dom";
@@ -389,6 +390,9 @@ import {
   getColorTargetAppStateUpdates,
   resolveColorTarget,
 } from "../actions/colorTargets";
+
+import { StoryAI } from "./StoryAI";
+import { StoryWriting } from "./StoryWriting";
 
 import ConvertElementTypePopup, {
   getConversionTypeFromElements,
@@ -1041,7 +1045,12 @@ class App extends React.Component<AppProps, AppState> {
    * `activeTool.locked`, which is the user's persisted padlock preference.
    */
   public isToolLocked(): boolean {
-    return this.state.activeTool.locked || this.props.activeTool != null;
+    return (
+      this.state.activeTool.locked ||
+      this.props.activeTool != null ||
+      (this.state.activeTool.type === "custom" &&
+        this.state.activeTool.customType === "story-ai")
+    );
   }
 
   /**
@@ -2702,6 +2711,19 @@ class App extends React.Component<AppProps, AppState> {
                             this.editorInterface.formFactor === "phone" && (
                               <ViewportStatusBorder
                                 border={this.props.viewportStatusFrame.border}
+                              />
+                            )}
+                          {this.isDefaultUIEnabled() && (
+                            <StoryWriting
+                              app={this}
+                              selectedElements={selectedElements}
+                            />
+                          )}
+                          {this.isDefaultUIEnabled() &&
+                            this.props.aiEnabled !== false && (
+                              <StoryAI
+                                app={this}
+                                selectedElements={selectedElements}
                               />
                             )}
                           {this.renderFrameNames()}
@@ -6359,16 +6381,22 @@ class App extends React.Component<AppProps, AppState> {
       // shouldn't edit/create text when inside line editor (often false positive)
 
       if (!this.state.selectedLinearElement?.isEditing) {
+        const selectedContainer =
+          selectedElements.length === 1 &&
+          isTextBindableContainer(selectedElements[0], false) &&
+          (isArrowElement(selectedElements[0])
+            ? hitElement === selectedElements[0]
+            : isPointInElement(
+                pointFrom(sceneX, sceneY),
+                selectedElements[0],
+                this.scene.getNonDeletedElementsMap(),
+              ))
+            ? selectedElements[0]
+            : null;
         const container =
-          // skip binding to container on dblclick when holding ctrl
           !event[KEYS.CTRL_OR_CMD] &&
-          // a single selected element is what the double-click is about —
-          // typing into it — wherever the click lands
-          (selectedElements.length === 1
-            ? isTextBindableContainer(selectedElements[0], false)
-              ? selectedElements[0]
-              : null
-            : this.text.getTextBindableContainerAtPosition(sceneX, sceneY));
+          (selectedContainer ||
+            this.text.getTextBindableContainerAtPosition(sceneX, sceneY));
 
         if (container) {
           if (
@@ -6376,6 +6404,11 @@ class App extends React.Component<AppProps, AppState> {
             // this shape" — unlike selection mode, a transparent unfilled
             // container binds even when its stroke wasn't hit (Alt keeps the
             // free-text-at-point escape hatch)
+            isPointInElement(
+              pointFrom(sceneX, sceneY),
+              container,
+              this.scene.getNonDeletedElementsMap(),
+            ) ||
             this.state.activeTool.type === "autoshape" ||
             hasBoundTextElement(container) ||
             !isTransparent(container.backgroundColor) ||
@@ -6401,6 +6434,13 @@ class App extends React.Component<AppProps, AppState> {
           sceneY,
           insertAtParentCenter: !event.altKey,
           container: container || null,
+          textElement:
+            container && !event.altKey
+              ? getBoundTextElement(
+                  container,
+                  this.scene.getNonDeletedElementsMap(),
+                )
+              : undefined,
         });
       }
     }

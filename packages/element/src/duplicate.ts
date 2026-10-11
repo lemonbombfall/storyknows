@@ -438,6 +438,40 @@ export const duplicateElements = (
 
   // ---------------------------------------------------------------------------
 
+  // Story references follow copied sources; partial copies retain external links.
+  const storyOutlineIds = new Map<string, string>();
+  for (const element of duplicatedElements) {
+    const story = element.customData?.storyknows;
+    if (
+      story?.version !== 1 ||
+      !["outline", "decoration"].includes(story.kind)
+    ) {
+      continue;
+    }
+    if (
+      typeof story.outlineId === "string" &&
+      !storyOutlineIds.has(story.outlineId)
+    ) {
+      storyOutlineIds.set(story.outlineId, randomId());
+    }
+    Object.assign(element, {
+      customData: {
+        ...element.customData,
+        storyknows: {
+          ...story,
+          outlineId: storyOutlineIds.get(story.outlineId) || story.outlineId,
+          ...(Array.isArray(story.sourceIds)
+            ? {
+                sourceIds: story.sourceIds.map(
+                  (id: string) => origIdToDuplicateId.get(id) || id,
+                ),
+              }
+            : {}),
+        },
+      },
+    });
+  }
+
   fixDuplicatedBindingsAfterDuplication(
     duplicatedElements,
     origIdToDuplicateId,

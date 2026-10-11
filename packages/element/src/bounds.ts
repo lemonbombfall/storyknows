@@ -30,7 +30,11 @@ import type { Mutable } from "@excalidraw/common/utility-types";
 import { generateRoughOptions } from "./shape";
 import { ShapeCache } from "./shape";
 import { LinearElementEditor } from "./linearElementEditor";
-import { getBoundTextElement, getContainerElement } from "./textElement";
+import {
+  getBoundTextElement,
+  getContainerElement,
+  isScrollableTextContainer,
+} from "./textElement";
 import {
   isArrowElement,
   isBoundToContainer,
@@ -1018,7 +1022,14 @@ export const getCommonBounds = (
   const _elementsMap = elementsMap || arrayToMap(elements);
 
   elements.forEach((element) => {
-    const [x1, y1, x2, y2] = getElementBounds(element, _elementsMap);
+    const container = isTextElement(element)
+      ? getContainerElement(element, _elementsMap)
+      : null;
+    // Hidden prose must not inflate export or zoom-to-selection bounds.
+    const [x1, y1, x2, y2] = getElementBounds(
+      isScrollableTextContainer(container) ? container : element,
+      _elementsMap,
+    );
     minX = Math.min(minX, x1);
     minY = Math.min(minY, y1);
     maxX = Math.max(maxX, x2);

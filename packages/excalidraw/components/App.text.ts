@@ -28,6 +28,7 @@ import {
   getLineHeightInPx,
   getStickyNoteLayout,
   hitElementItself,
+  isPointInElement,
   isArrowElement,
   isFrameLikeElement,
   isNonDeletedElement,
@@ -518,7 +519,7 @@ export class AppText {
 
   /**
    * The text container at a position — an arrow hit on its path, any other
-   * container hit anywhere in its bounds (frames are skipped so a container
+   * container hit inside its actual outline (frames are skipped so a container
    * inside one can be hit, and a frame's children are only hit inside it,
    * where they are drawn). Purely positional: the selection plays no part.
    *
@@ -559,7 +560,7 @@ export class AppText {
               elementsMap,
               threshold: this.app.getElementHitThreshold(element),
             })
-          : !(x1 < x && x < x2 && y1 < y && y < y2)
+          : !isPointInElement(pointFrom(x, y), element, elementsMap)
       ) {
         continue;
       }

@@ -1,0 +1,380 @@
+.excalidraw {
+  .story-ai-tool {
+    width: 2.25rem;
+    height: 2.25rem;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 0.5rem;
+    background: transparent;
+    color: var(--icon-fill-color);
+    cursor: pointer;
+    svg {
+      width: 22px;
+      height: 22px;
+      fill: none;
+      stroke: currentColor;
+      stroke-width: 1.7;
+    }
+    &.is-active {
+      background: #e8e0ff;
+      color: #7556d6;
+    }
+  }
+  .story-ai-strip {
+    position: absolute;
+    left: 50%;
+    top: 76px;
+    transform: translateX(-50%);
+    z-index: 6;
+    display: flex;
+    align-items: center;
+    padding: 0 6px 0 0;
+    height: 44px;
+    border: 1px solid #e6e3ed;
+    border-radius: 11px;
+    background: var(--island-bg-color);
+    box-shadow: 0 3px 14px #29203205;
+    white-space: nowrap;
+    > i {
+      height: 21px;
+      width: 1px;
+      background: #eae6ef;
+    }
+  }
+  .story-ai-dropdown {
+    position: relative;
+    height: 100%;
+    > button {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 24px;
+      height: 100%;
+      min-width: 132px;
+      padding: 0 15px;
+      border: 0;
+      background: transparent;
+      color: var(--text-primary-color);
+      font: inherit;
+      font-size: 13px;
+      cursor: pointer;
+      span {
+        color: #8c8598;
+        &.is-open {
+          transform: rotate(180deg);
+        }
+      }
+    }
+  }
+  .story-ai-menu {
+    position: absolute;
+    top: calc(100% + 1px);
+    left: -1px;
+    width: calc(100% + 2px);
+    padding: 6px;
+    box-sizing: border-box;
+    border: 1px solid #e6e3ed;
+    border-radius: 9px;
+    background: var(--island-bg-color);
+    box-shadow: 0 6px 14px #29203205;
+    button {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      min-height: 36px;
+      padding: 9px;
+      border: 0;
+      border-radius: 8px;
+      background: transparent;
+      color: var(--text-primary-color);
+      font-size: 13px;
+      cursor: pointer;
+      &:hover {
+        background: #f7f5fb;
+      }
+      &[aria-checked="true"] {
+        background: #f2edfc;
+        color: #7858ce;
+      }
+    }
+  }
+  .story-ai-primary {
+    background: #eee9fc !important;
+    color: #7858d6 !important;
+    border: 0;
+    border-radius: 9px;
+    padding: 9px 14px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  .story-ai-preview {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 3;
+  }
+  .story-ai-card {
+    position: absolute;
+    width: 270px;
+    height: 330px;
+    padding: 18px 20px;
+    box-sizing: border-box;
+    transform-origin: top left;
+    border: 2px solid #393b36;
+    border-radius: 30px 27px 32px 25px;
+    box-shadow: 3px 5px #32322d12;
+    pointer-events: auto;
+    color: #393b36;
+    header {
+      cursor: grab;
+      text-align: center;
+      height: 43px;
+      touch-action: none;
+    }
+    select {
+      border: 0;
+      background: #ffffffb0;
+      border-radius: 40%;
+      padding: 3px 12px;
+      font: inherit;
+      font-size: 22px;
+      color: inherit;
+    }
+    input,
+    textarea:not(.excalidraw-wysiwyg) {
+      box-sizing: border-box;
+      white-space: pre-wrap;
+      border: 0;
+      padding: 0;
+      outline: none;
+      width: 100%;
+      background: transparent;
+      color: inherit;
+      font: inherit;
+    }
+    input {
+      margin: 10px 0;
+      font-size: 18px;
+    }
+    textarea:not(.excalidraw-wysiwyg) {
+      box-sizing: border-box;
+      white-space: pre-wrap;
+      height: 190px;
+      resize: none;
+      font-size: 17px;
+      line-height: 1.9;
+    }
+    small {
+      color: #926fa9;
+      font: 10px sans-serif;
+    }
+  }
+  .story-ai-empty {
+    opacity: 0.35;
+    border: 1px dashed #b8b1c7;
+    box-shadow: none;
+    pointer-events: none;
+    text-align: center;
+  }
+  .story-ai-source {
+    position: absolute;
+    right: 12px;
+    bottom: 9px;
+    border: 0;
+    background: #ffffff70;
+    border-radius: 6px;
+    cursor: pointer;
+    color: #82768c;
+  }
+  .story-ai-sources {
+    position: absolute;
+    right: 0;
+    bottom: 34px;
+    border: 1px solid #e6e3ed;
+    border-radius: 9px;
+    background: var(--island-bg-color);
+    padding: 5px;
+    min-width: 140px;
+    z-index: 2;
+    button {
+      display: block;
+      width: 100%;
+      padding: 8px;
+      border: 0;
+      background: transparent;
+      color: var(--text-primary-color);
+      cursor: pointer;
+      text-align: left;
+      font-size: 12px;
+    }
+  }
+  .story-ai-curve {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: -1;
+    path {
+      stroke: #9269d8;
+      stroke-width: 2;
+      fill: none;
+    }
+  }
+  .story-ai-draft-actions,
+  .story-ai-source-access {
+    position: absolute;
+    left: 50%;
+    bottom: 24px;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    z-index: 6;
+    padding: 8px 10px;
+    border: 1px solid #e6e3ed;
+    border-radius: 11px;
+    background: var(--island-bg-color);
+    > button {
+      border: 0;
+      padding: 8px;
+      background: transparent;
+      color: var(--text-primary-color);
+      cursor: pointer;
+      font-size: 12px;
+    }
+  }
+  .story-ai-message {
+    position: absolute;
+    bottom: 85px;
+    left: 50%;
+    transform: translateX(-50%);
+    max-width: calc(100% - 50px);
+    padding: 12px 16px;
+    border-radius: 10px;
+    background: var(--island-bg-color);
+    border: 1px solid #e6e3ed;
+    z-index: 7;
+    font-size: 12px;
+    button {
+      border: 0;
+      background: none;
+      color: inherit;
+      cursor: pointer;
+      margin-left: 12px;
+    }
+  }
+  .story-ai-feather {
+    position: absolute;
+    bottom: 28px;
+    right: 30px;
+    width: 58px;
+    height: 58px;
+    border: 0;
+    border-radius: 50%;
+    background: #eee9fc;
+    color: #7a5de0;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    z-index: 4;
+    svg {
+      width: 30px;
+      height: 30px;
+    }
+  }
+  .story-ai-summary {
+    position: absolute;
+    bottom: 140px;
+    right: 30px;
+    width: 310px;
+    padding: 23px;
+    border-radius: 8px 11px 17px 7px;
+    box-shadow: 2px 4px #0000000c, 0 12px 35px #00000009;
+    z-index: 4;
+    box-sizing: border-box;
+    input,
+    textarea:not(.excalidraw-wysiwyg) {
+      box-sizing: border-box;
+      white-space: pre-wrap;
+      width: 100%;
+      border: 0;
+      outline: none;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      padding: 0;
+    }
+    input {
+      font-size: 23px;
+      margin-bottom: 17px;
+    }
+    textarea:not(.excalidraw-wysiwyg) {
+      box-sizing: border-box;
+      white-space: pre-wrap;
+      font-size: 18px;
+      line-height: 1.9;
+      height: 155px;
+      resize: vertical;
+    }
+    small {
+      display: block;
+      text-align: right;
+      font: 10px sans-serif;
+      opacity: 0.65;
+      &.is-invalid {
+        color: #ad433c;
+        opacity: 1;
+      }
+    }
+  }
+  .story-ai-summary-actions {
+    position: absolute;
+    bottom: -42px;
+    right: 0;
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border: 1px solid #e6e3ed;
+    background: var(--island-bg-color);
+    border-radius: 9px;
+    button {
+      border: 0;
+      border-radius: 7px;
+      width: 32px;
+      height: 28px;
+      background: transparent;
+      color: #9788aa;
+      cursor: pointer;
+      &:last-child {
+        background: #eee9fc;
+        color: #7858d6;
+      }
+    }
+  }
+  .story-ai-error {
+    font: 12px/1.7 sans-serif;
+    color: #ab6058;
+  }
+  .story-ai-view-toggle {
+    position: absolute;
+    z-index: 5;
+    border: 0;
+    border-radius: 7px;
+    background: #ffffffb0;
+    color: #887899;
+    font-size: 11px;
+    padding: 5px 8px;
+    cursor: pointer;
+  }
+  .story-ai-strip,
+  .story-ai-draft-actions,
+  .story-ai-summary-actions {
+    button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+  }
+}

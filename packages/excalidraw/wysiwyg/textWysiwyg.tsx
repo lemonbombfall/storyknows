@@ -17,9 +17,7 @@ import { pointFrom, pointRotateRads, type Radians } from "@excalidraw/math";
 
 import {
   getTextFromElements,
-  originalContainerCache,
-  updateBoundElements,
-  updateOriginalContainerCache,
+  isScrollableTextContainer,
 } from "@excalidraw/element";
 
 import { LinearElementEditor } from "@excalidraw/element";
@@ -31,7 +29,6 @@ import {
   redrawTextBoundingBox,
   getBoundTextMaxHeight,
   getBoundTextMaxWidth,
-  computeContainerDimensionForBoundText,
   computeBoundTextPosition,
   getBoundTextElement,
 } from "@excalidraw/element";
@@ -312,26 +309,6 @@ export const textWysiwyg = ({
     y: number;
   } | null = null;
 
-  const textPropertiesUpdated = (
-    updatedTextElement: ExcalidrawTextElement,
-    editable: HTMLTextAreaElement,
-  ) => {
-    if (!editable.style.fontFamily || !editable.style.fontSize) {
-      return false;
-    }
-    const currentFont = editable.style.fontFamily.replace(/"/g, "");
-    if (
-      getFontFamilyString({ fontFamily: updatedTextElement.fontFamily }) !==
-      currentFont
-    ) {
-      return true;
-    }
-    if (`${updatedTextElement.fontSize}px` !== editable.style.fontSize) {
-      return true;
-    }
-    return false;
-  };
-
   let LAST_THEME = app.state.theme;
 
   const updateWysiwygStyle = () => {
@@ -379,75 +356,30 @@ export const textWysiwyg = ({
           updatedTextElement as ExcalidrawTextElementWithContainer,
         );
 
-        if (isStickyNoteElement(container)) {
-          // the sticky fit (App.updateElement) owns the note's height; the
-          // editor only mirrors the fitted label's position
-          const { x, y } = computeBoundTextPosition(
-            container,
-            updatedTextElement as ExcalidrawTextElementWithContainer,
-            elementsMap,
-          );
-          coordX = x;
-          coordY = y;
-        } else {
-          const propertiesUpdated = textPropertiesUpdated(
-            updatedTextElement,
-            editable,
-          );
-
-          let originalContainerData;
-          if (propertiesUpdated) {
-            originalContainerData = updateOriginalContainerCache(
-              container.id,
-              container.height,
-            );
-          } else {
-            originalContainerData = originalContainerCache[container.id];
-            if (!originalContainerData) {
-              originalContainerData = updateOriginalContainerCache(
-                container.id,
-                container.height,
-              );
-            }
-          }
-
-          // autogrow container height if text exceeds
-          if (!isArrowElement(container) && height > maxHeight) {
-            const targetContainerHeight = computeContainerDimensionForBoundText(
-              height,
-              container.type,
-            );
-
-            app.scene.mutateElement(container, {
-              height: targetContainerHeight,
-            });
-            updateBoundElements(container, app.scene);
-            return;
-          } else if (
-            // autoshrink container height until original container height
-            // is reached when text is removed
-            !isArrowElement(container) &&
-            container.height > originalContainerData.height &&
-            height < maxHeight
-          ) {
-            const targetContainerHeight = computeContainerDimensionForBoundText(
-              height,
-              container.type,
-            );
-            app.scene.mutateElement(container, {
-              height: targetContainerHeight,
-            });
-            updateBoundElements(container, app.scene);
-          } else {
-            const { x, y } = computeBoundTextPosition(
-              container,
-              updatedTextElement as ExcalidrawTextElementWithContainer,
-              elementsMap,
-            );
-            coordX = x;
-            coordY = y;
-          }
-        }
+        const position = computeBoundTextPosition(
+          container,
+          updatedTextElement as ExcalidrawTextElementWithContainer,
+          elementsMap,
+        );
+        coordX = position.x;
+        coordY = position.y;
+      }
+      const sceneTextPosition = { x: coordX, y: coordY };
+      const scrollable = isScrollableTextContainer(container);
+      const editorHeight = scrollable
+        ? Math.max(1, Math.min(height, maxHeight))
+        : height;
+      if (scrollable) {
+        const position = computeBoundTextPosition(
+          container,
+          {
+            ...updatedTextElement,
+            height: editorHeight,
+          } as ExcalidrawTextElementWithContainer,
+          elementsMap,
+        );
+        coordX = position.x;
+        coordY = position.y;
       }
       const [viewportX, viewportY] = getViewportCoords(coordX, coordY);
       const angle = getTextElementAngle(updatedTextElement, container);
@@ -460,7 +392,7 @@ export const textWysiwyg = ({
       }
 
       // add 5% buffer otherwise it causes wysiwyg to jump
-      height *= 1.05;
+      height = scrollable ? editorHeight : height * 1.05;
 
       const font = getFontString(updatedTextElement);
       const editorBoxLeft = updateEditorBoxInsets();
@@ -481,16 +413,19 @@ export const textWysiwyg = ({
         lineHeight: updatedTextElement.lineHeight,
         width: `${width}px`,
         height: `${height}px`,
+        overflowY: scrollable ? "auto" : "hidden",
+        overscrollBehavior: scrollable ? "contain" : "auto",
+        scrollbarWidth: "thin",
         left: `${viewportX - editorBoxLeft}px`,
         top: `${viewportY}px`,
         // about the text's center, whatever size the box itself ends up
         // (the 5% buffer) — see getTransform
         transformOrigin: `${updatedTextElement.width / 2}px ${
-          updatedTextElement.height / 2
+          editorHeight / 2
         }px`,
         transform: getTransform(
           updatedTextElement.width,
-          updatedTextElement.height,
+          editorHeight,
           angle,
           appState,
         ),
@@ -505,7 +440,7 @@ export const textWysiwyg = ({
       currentTextLayout = {
         angle: angle as Radians,
         font,
-        height: updatedTextElement.height,
+        height: editorHeight,
         lineHeightPx: getLineHeightInPx(
           updatedTextElement.fontSize,
           updatedTextElement.lineHeight,
@@ -515,14 +450,16 @@ export const textWysiwyg = ({
         x: coordX,
         y: coordY,
       };
-      editable.scrollTop = 0;
+      if (!scrollable) {
+        editable.scrollTop = 0;
+      }
       // For some reason updating font attribute doesn't set font family
       // hence updating font family explicitly for test environment
       if (isTestEnv()) {
         editable.style.fontFamily = getFontFamilyString(updatedTextElement);
       }
 
-      app.scene.mutateElement(updatedTextElement, { x: coordX, y: coordY });
+      app.scene.mutateElement(updatedTextElement, sceneTextPosition);
     }
   };
 
@@ -561,6 +498,16 @@ export const textWysiwyg = ({
     whiteSpace,
     overflowWrap: "break-word",
     boxSizing: "content-box",
+  });
+  // Keep wheel gestures inside a bounded editor, including at its scroll limits.
+  editable.addEventListener("wheel", (event) => {
+    if (
+      isScrollableTextContainer(
+        getContainerElement(element, app.scene.getNonDeletedElementsMap()),
+      )
+    ) {
+      event.stopPropagation();
+    }
   });
   editable.value = element.originalText;
   updateWysiwygStyle();
@@ -702,6 +649,13 @@ export const textWysiwyg = ({
    * only then: a text beside or below a panel stays where it is.
    */
   const followCaretFromUnderPanels = () => {
+    if (
+      isScrollableTextContainer(
+        getContainerElement(element, app.scene.getNonDeletedElementsMap()),
+      )
+    ) {
+      return;
+    }
     const caret = !isDestroyed && getCaretViewportBounds();
     if (!caret) {
       return;

@@ -1,3 +1,4 @@
+import { createStoryAIHandler } from "../api/story-ai";
 import path from "path";
 import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
@@ -132,6 +133,18 @@ export default defineConfig(({ mode }) => {
       assetsInlineLimit: 0,
     },
     plugins: [
+      {
+        name: "story-ai",
+        configureServer(server) {
+          const handler = createStoryAIHandler({
+            ...process.env,
+            ...loadEnv(mode, path.resolve(__dirname, ".."), ""),
+          });
+          server.middlewares.use("/api/story-ai", (req, res) => {
+            void handler(req, res);
+          });
+        },
+      },
       Sitemap({
         hostname: "https://excalidraw.com",
         outDir: "build",

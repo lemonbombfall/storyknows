@@ -48,6 +48,38 @@ import type {
   NonDeleted,
 } from "./types";
 
+/** Closed shapes keep their size; bound prose scrolls instead of growing them. */
+export const isScrollableTextContainer = (
+  element: ExcalidrawElement | null | undefined,
+): element is Extract<
+  ExcalidrawElement,
+  { type: "rectangle" | "ellipse" | "diamond" | "stickynote" }
+> =>
+  !!element &&
+  ["rectangle", "ellipse", "diamond", "stickynote"].includes(element.type);
+
+/** Scene-space polygon shared by the canvas and SVG clipping paths. */
+export const getBoundTextViewport = (
+  container: ExcalidrawElement,
+  text: ExcalidrawTextElementWithContainer,
+) => {
+  const { x, y } = getContainerCoords(container);
+  const width = Math.max(1, getBoundTextMaxWidth(container, text));
+  const height = Math.max(1, getBoundTextMaxHeight(container, text));
+  const center = pointFrom(
+    container.x + container.width / 2,
+    container.y + container.height / 2,
+  );
+  return [
+    [x, y],
+    [x + width, y],
+    [x + width, y + height],
+    [x, y + height],
+  ].map(([px, py]) =>
+    pointRotateRads(pointFrom(px, py), center, container.angle),
+  );
+};
+
 export const redrawTextBoundingBox = (
   textElement: ExcalidrawTextElement,
   container: ExcalidrawElement | null,
@@ -117,7 +149,11 @@ export const redrawTextBoundingBox = (
     );
     const maxContainerWidth = getBoundTextMaxWidth(container, textElement);
 
-    if (!isArrowElement(container) && metrics.height > maxContainerHeight) {
+    if (
+      !isArrowElement(container) &&
+      !isScrollableTextContainer(container) &&
+      metrics.height > maxContainerHeight
+    ) {
       const nextHeight = computeContainerDimensionForBoundText(
         metrics.height,
         container.type,
@@ -126,7 +162,10 @@ export const redrawTextBoundingBox = (
       updateOriginalContainerCache(container.id, nextHeight);
     }
 
-    if (metrics.width > maxContainerWidth) {
+    if (
+      !isScrollableTextContainer(container) &&
+      metrics.width > maxContainerWidth
+    ) {
       const nextWidth = computeContainerDimensionForBoundText(
         metrics.width,
         container.type,
@@ -204,7 +243,7 @@ export const handleBindTextResize = (
       nextWidth = metrics.width;
     }
     // increase height in case text element height exceeds
-    if (nextHeight > maxHeight) {
+    if (!isScrollableTextContainer(container) && nextHeight > maxHeight) {
       containerHeight = computeContainerDimensionForBoundText(
         nextHeight,
         container.type,
@@ -264,7 +303,11 @@ export const computeBoundTextPosition = (
 
   let x;
   let y;
-  if (boundTextElement.verticalAlign === VERTICAL_ALIGN.TOP) {
+  if (
+    boundTextElement.verticalAlign === VERTICAL_ALIGN.TOP ||
+    (isScrollableTextContainer(container) &&
+      boundTextElement.height > maxContainerHeight)
+  ) {
     y = containerCoords.y;
   } else if (boundTextElement.verticalAlign === VERTICAL_ALIGN.BOTTOM) {
     y = containerCoords.y + (maxContainerHeight - boundTextElement.height);

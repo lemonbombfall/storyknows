@@ -7,6 +7,8 @@ import { t } from "../i18n";
 
 import { useTunnels } from "../context/tunnels";
 
+import { StoryAIButton } from "./StoryAI";
+
 import DropdownMenu from "./dropdownMenu/DropdownMenu";
 import { ToolPopover } from "./ToolPopover";
 import {
@@ -229,6 +231,7 @@ export const MobileToolbar = ({ app, setAppState }: MobileToolbarProps) => {
       {showFrameToolOutside && <FrameToolButton {...toolProps} hideShortcut />}
 
       {/* Other Shapes */}
+      {app.props.aiEnabled !== false && <StoryAIButton app={app} />}
       <DropdownMenu open={isOtherShapesMenuOpen}>
         <DropdownMenu.Trigger
           className={clsx(

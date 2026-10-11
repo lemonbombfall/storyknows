@@ -24,7 +24,12 @@ import {
   getEmbedLink,
 } from "@excalidraw/element";
 import { LinearElementEditor } from "@excalidraw/element";
-import { getBoundTextElement, getContainerElement } from "@excalidraw/element";
+import {
+  getBoundTextViewport,
+  isScrollableTextContainer,
+  getBoundTextElement,
+  getContainerElement,
+} from "@excalidraw/element";
 import { getLineHeightInPx } from "@excalidraw/element";
 import {
   isArrowElement,
@@ -141,7 +146,33 @@ const renderElementToSvg = (
     if (isTestEnv()) {
       node.setAttribute("data-id", element.id);
     }
-    root.appendChild(node);
+    const container = isTextElement(element)
+      ? getContainerElement(element, elementsMap)
+      : null;
+    if (isTextElement(element) && isScrollableTextContainer(container)) {
+      const doc = svgRoot.ownerDocument;
+      const clip = doc.createElementNS(SVG_NS, "clipPath");
+      clip.id = `text-viewport-${element.id}`;
+      const polygon = doc.createElementNS(SVG_NS, "polygon");
+      polygon.setAttribute(
+        "points",
+        getBoundTextViewport(
+          container,
+          element as ExcalidrawTextElementWithContainer,
+        )
+          .map(
+            ([x, y]) => `${x + offsetX - element.x},${y + offsetY - element.y}`,
+          )
+          .join(" "),
+      );
+      clip.appendChild(polygon);
+      const group = doc.createElementNS(SVG_NS, "g");
+      group.setAttribute("clip-path", `url(#${clip.id})`);
+      group.appendChild(node);
+      root.append(clip, group);
+    } else {
+      root.appendChild(node);
+    }
   };
 
   const opacity =

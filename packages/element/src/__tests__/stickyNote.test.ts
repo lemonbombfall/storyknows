@@ -220,7 +220,7 @@ describe("sticky note text layout", () => {
     }
   });
 
-  it("downscales font to fit the base size before growing height", () => {
+  it("preserves the chosen font and fixed viewport for overflowing text", () => {
     const sevenBaseHeightLines = Array(7).fill("abcdefghij").join("\n");
     const { scene, stickyId, textId } =
       createStickyWithText(sevenBaseHeightLines);
@@ -232,11 +232,11 @@ describe("sticky note text layout", () => {
     expect(sticky.baseHeight).toBe(DEFAULT_STICKY_NOTE_SIZE);
     expect(text.x - sticky.x).toBeGreaterThanOrEqual(STICKY_NOTE_PADDING);
     expect(text.y - sticky.y).toBeGreaterThanOrEqual(STICKY_NOTE_PADDING);
-    expect(text.fontSize).toBeLessThan(text.baseFontSize!);
+    expect(text.fontSize).toBe(text.baseFontSize);
     expect(text.fontSize).toBeGreaterThan(STICKY_NOTE_MIN_FONT_SIZE);
   });
 
-  it("grows downward at min font and shrinks back to base when text is deleted", () => {
+  it("keeps geometry and font unchanged when long text is added or deleted", () => {
     const overflowingText = Array(40)
       .fill("abcdefghijklmnopqrstuvwx")
       .join("\n");
@@ -244,8 +244,8 @@ describe("sticky note text layout", () => {
     const sticky = getSticky(scene, stickyId);
     const text = getBoundText(scene, textId);
 
-    expect(text.fontSize).toBe(STICKY_NOTE_MIN_FONT_SIZE);
-    expect(sticky.height).toBeGreaterThan(sticky.baseHeight);
+    expect(text.fontSize).toBe(STICKY_FONT_SIZE);
+    expect(sticky.height).toBe(sticky.baseHeight);
     expect(sticky.y).toBe(100);
 
     scene.mutateElement(text, {
@@ -262,7 +262,7 @@ describe("sticky note text layout", () => {
     expect(updatedText.fontSize).toBe(updatedText.baseFontSize);
   });
 
-  it("keeps the bottom edge anchored when a north resize is content-pinned", () => {
+  it("keeps the bottom edge anchored when a north resize is scrollable", () => {
     const overflowingText = Array(40)
       .fill("abcdefghijklmnopqrstuvwx")
       .join("\n");
@@ -288,13 +288,13 @@ describe("sticky note text layout", () => {
 
     const updatedSticky = getSticky(scene, stickyId);
 
-    expect(updatedSticky.height).toBeCloseTo(originalSticky.height);
-    expect(updatedSticky.y).toBeCloseTo(originalSticky.y);
+    expect(updatedSticky.height).toBeCloseTo(originalSticky.height - 100);
+    expect(updatedSticky.y).toBeCloseTo(originalSticky.y + 100);
     expect(updatedSticky.y + updatedSticky.height).toBeCloseTo(originalBottom);
     expect(updatedSticky.baseHeight).toBeCloseTo(originalSticky.height - 100);
   });
 
-  it("keeps the requested height as the base when a corner drag is content-pinned", () => {
+  it("keeps the requested height as the base when a corner drag is scrollable", () => {
     const overflowingText = Array(40)
       .fill("abcdefghijklmnopqrstuvwx")
       .join("\n");
@@ -330,11 +330,10 @@ describe("sticky note text layout", () => {
     const updatedText = getBoundText(scene, textId);
 
     expect(updatedSticky.width).toBe(nextWidth);
-    // the note refuses to shrink below its content, but the user's intent is
-    // remembered as the base: delete the text later and it snaps to 250
+    // The viewport follows the requested size; overflowing text remains intact.
     expect(updatedSticky.baseHeight).toBe(nextHeight);
     expect(updatedSticky.height).toBeCloseTo(expectedLayout.container.height);
-    expect(updatedSticky.height).toBeGreaterThan(nextHeight);
+    expect(updatedSticky.height).toBe(nextHeight);
     // "se" holds the top-left corner
     expect(updatedSticky.y).toBeCloseTo(originalSticky.y);
     expect(updatedText.fontSize).toBe(originalText.fontSize);
@@ -370,7 +369,7 @@ describe("sticky note text layout", () => {
     expect(updatedText.fontSize).toBe(STICKY_FONT_SIZE * 2);
   });
 
-  it("keeps the base height on a width-only drag of a content-grown note", () => {
+  it("keeps the base height on a width-only drag of a overflowing note", () => {
     const overflowingText = Array(40)
       .fill("abcdefghijklmnopqrstuvwx")
       .join("\n");
@@ -380,7 +379,7 @@ describe("sticky note text layout", () => {
     const originalSticky = { ...sticky };
     const originalElementsMap = arrayToMap([originalSticky, { ...text }]);
 
-    expect(sticky.height).toBeGreaterThan(sticky.baseHeight);
+    expect(sticky.height).toBe(sticky.baseHeight);
 
     resizeSingleElement(
       400,
@@ -396,7 +395,7 @@ describe("sticky note text layout", () => {
 
     expect(updatedSticky.width).toBe(400);
     expect(updatedSticky.baseHeight).toBe(DEFAULT_STICKY_NOTE_SIZE);
-    expect(updatedSticky.height).toBeGreaterThan(updatedSticky.baseHeight);
+    expect(updatedSticky.height).toBe(updatedSticky.baseHeight);
     expect(updatedSticky.y).toBe(100);
   });
 
@@ -452,7 +451,7 @@ describe("sticky note text layout", () => {
     );
   });
 
-  it("flips a rotated note without promoting its grown height or losing the label's angle", () => {
+  it("flips a rotated note without promoting its viewport height or losing the label's angle", () => {
     const overflowingText = Array(40)
       .fill("abcdefghijklmnopqrstuvwx")
       .join("\n");
@@ -462,7 +461,7 @@ describe("sticky note text layout", () => {
     scene.mutateElement(sticky, { angle: 0.5 as Radians });
     scene.mutateElement(text, { angle: 0.5 as Radians });
     const grownHeight = sticky.height;
-    expect(grownHeight).toBeGreaterThan(sticky.baseHeight);
+    expect(grownHeight).toBe(sticky.baseHeight);
     const originalElementsMap = arrayToMap([{ ...sticky }, { ...text }]);
 
     resizeMultipleElements(
@@ -522,7 +521,7 @@ describe("sticky note text layout", () => {
     expect(updatedSticky.baseHeight).toBe(500);
   });
 
-  it("keeps the center on an Alt (center) resize that is content-pinned", () => {
+  it("keeps the center on an Alt (center) resize that is scrollable", () => {
     const overflowingText = Array(40)
       .fill("abcdefghijklmnopqrstuvwx")
       .join("\n");
@@ -545,8 +544,8 @@ describe("sticky note text layout", () => {
         { shouldResizeFromCenter: true },
       );
       const updated = getSticky(scene, stickyId);
-      // content-pinned: the height springs back, but around the center
-      expect(updated.height).toBeCloseTo(originalSticky.height);
+      // scrollable: the height springs back, but around the center
+      expect(updated.height).toBeCloseTo(originalSticky.height - 100);
       expect(updated.y + updated.height / 2).toBeCloseTo(centerY);
       expect(updated.baseHeight).toBeCloseTo(originalSticky.height - 100);
     }
@@ -659,7 +658,7 @@ describe("sticky note text layout", () => {
     expect(updatedText.fontSize).toBe(STICKY_FONT_SIZE);
   });
 
-  it("keeps the rotated top edge in place while the note grows", () => {
+  it("keeps the rotated top edge in place while the note overflows", () => {
     const { scene, stickyId, textId } = createStickyWithText("short");
     const sticky = getSticky(scene, stickyId);
     const text = getBoundText(scene, textId);
@@ -682,7 +681,7 @@ describe("sticky note text layout", () => {
     });
 
     const after = getSticky(scene, stickyId);
-    expect(after.height).toBeGreaterThan(heightBefore);
+    expect(after.height).toBe(heightBefore);
     const [x, y] = topEdgeMidpoint(after);
     expect(x).toBeCloseTo(before[0]);
     expect(y).toBeCloseTo(before[1]);
@@ -741,7 +740,7 @@ describe("sticky note text layout", () => {
       originalText: overflowing,
       baseFontSize: 27,
     }).text!.fontSize;
-    expect(fitted).toBeLessThan(27);
+    expect(fitted).toBe(27);
     expect(
       fitted === STICKY_NOTE_MIN_FONT_SIZE || (27 - fitted) % 2 === 0,
     ).toBe(true);

@@ -51,6 +51,8 @@ import { getUncroppedImageElement } from "./cropElement";
 import { LinearElementEditor } from "./linearElementEditor";
 import {
   getBoundTextElement,
+  getBoundTextViewport,
+  isScrollableTextContainer,
   getContainerCoords,
   getContainerElement,
   getBoundTextMaxHeight,
@@ -992,6 +994,29 @@ export const renderElement = (
   ) {
     context.translate(renderState.offset.x, renderState.offset.y);
   }
+  if (isTextElement(element)) {
+    const container = getContainerElement(element, elementsMap);
+    if (isScrollableTextContainer(container)) {
+      const corners = getBoundTextViewport(
+        container,
+        element as ExcalidrawTextElementWithContainer,
+      );
+      context.beginPath();
+      corners.forEach(([x, y], index) => {
+        const px =
+          x +
+          appState.scrollX +
+          (renderConfig.isExporting ? 0 : renderState.offset.x);
+        const py =
+          y +
+          appState.scrollY +
+          (renderConfig.isExporting ? 0 : renderState.offset.y);
+        index === 0 ? context.moveTo(px, py) : context.lineTo(px, py);
+      });
+      context.closePath();
+      context.clip();
+    }
+  }
   try {
     drawElement(
       element,
@@ -1108,7 +1133,19 @@ const drawElement = (
     case "text":
     case "iframe":
     case "embeddable": {
-      if (renderConfig.isExporting) {
+      const textContainer = isTextElement(element)
+        ? getContainerElement(element, elementsMap)
+        : null;
+      // Avoid allocating a document-height bitmap for a small scrolling viewport.
+      const overflowingText =
+        isTextElement(element) &&
+        isScrollableTextContainer(textContainer) &&
+        element.height >
+          getBoundTextMaxHeight(
+            textContainer,
+            element as ExcalidrawTextElementWithContainer,
+          );
+      if (renderConfig.isExporting || overflowingText) {
         const [x1, y1, x2, y2] = getElementAbsoluteCoords(element, elementsMap);
         const centerX = (x1 + x2) / 2;
         const centerY = (y1 + y2) / 2;

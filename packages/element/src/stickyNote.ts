@@ -6,10 +6,8 @@ import {
   STICKY_NOTE_BODY_INSET_Y,
   STICKY_NOTE_FALLBACK_FONT_SIZE,
   STICKY_NOTE_FOOTER,
-  STICKY_NOTE_FONT_STEP,
   STICKY_NOTE_MAX_FONT_SIZE,
   STICKY_NOTE_MIN_SIZE,
-  STICKY_NOTE_MIN_FONT_SIZE,
   STICKY_NOTE_PADDING,
   STICKY_NOTE_SHADOW_OFFSET,
   getFontString,
@@ -17,8 +15,6 @@ import {
   isTransparent,
   seededRandom,
 } from "@excalidraw/common";
-
-import { clamp } from "@excalidraw/math";
 
 import { updateBoundElements } from "./binding";
 import { newElementWith } from "./mutateElement";
@@ -577,95 +573,7 @@ const getStickyNoteBaseWidth = (container: ExcalidrawStickyNoteElement) => {
   return Math.max(container.width, STICKY_NOTE_MIN_SIZE);
 };
 
-/**
- * Largest font size on the grid `{ceiling − k·STEP} ∪ {min}` whose wrapped
- * text fits the note; `min` when nothing fits (the note then grows). The grid
- * is anchored at the ceiling so the result never depends on earlier edits.
- * Warm-started from the previously fitted size: the common keystroke costs one
- * or two wrap+measure passes, a cold search at most log2(steps) + 2.
- */
-const fitStickyNoteFont = (
-  fit: (fontSize: number) => FontFit,
-  {
-    baseFontSize,
-    fontSizeMin,
-    maxWidth,
-    maxHeight,
-    warmStart,
-  }: {
-    baseFontSize: number;
-    fontSizeMin: number;
-    maxWidth: number;
-    maxHeight: number;
-    warmStart: number;
-  },
-): FontFit => {
-  const steps = Math.max(
-    0,
-    Math.ceil((baseFontSize - fontSizeMin) / STICKY_NOTE_FONT_STEP),
-  );
-  const sizeAt = (index: number) =>
-    index >= steps ? fontSizeMin : baseFontSize - index * STICKY_NOTE_FONT_STEP;
-
-  const fits = new Map<number, FontFit>();
-  const at = (index: number) => {
-    let result = fits.get(index);
-    if (!result) {
-      result = fit(sizeAt(index));
-      fits.set(index, result);
-    }
-    return result;
-  };
-  const doesFit = (index: number) => {
-    const result = at(index);
-    return result.width <= maxWidth && result.height <= maxHeight;
-  };
-
-  if (steps === 0) {
-    return at(0);
-  }
-
-  // the previous fitted size, snapped onto the grid and clamped into the
-  // current interval (a lowered ceiling must not keep the old larger size)
-  const warm = clamp(
-    Math.round((baseFontSize - warmStart) / STICKY_NOTE_FONT_STEP),
-    0,
-    steps,
-  );
-
-  // binary search for the smallest index (largest font) that fits
-  let lo: number;
-  let hi: number;
-  if (doesFit(warm)) {
-    if (warm === 0 || !doesFit(warm - 1)) {
-      return at(warm);
-    }
-    lo = 0;
-    hi = warm - 1;
-  } else {
-    if (warm === steps) {
-      return at(steps);
-    }
-    lo = warm + 1;
-    hi = steps;
-  }
-  while (lo < hi) {
-    const mid = (lo + hi) >> 1;
-    if (doesFit(mid)) {
-      hi = mid;
-    } else {
-      lo = mid + 1;
-    }
-  }
-  return at(lo);
-};
-
-/**
- * The single source of truth for a sticky note's geometry: wraps the label at
- * the note's width, fits the font under the ceiling, grows the note past
- * `baseHeight` only when the text still overflows at the minimum size, and
- * positions the label inside. Pure — returns the updates for both elements.
- */
+/** Wrap at the chosen font size without changing the note's fixed viewport. */
 export const getStickyNoteLayout = (
   container: ExcalidrawStickyNoteElement,
   textElement: ExcalidrawTextElement | null,
@@ -695,39 +603,18 @@ export const getStickyNoteLayout = (
   const baseFontSize = normalizeStickyNoteFontSize(
     opts.baseFontSize ?? textElement.baseFontSize ?? textElement.fontSize,
   );
-  const fontSizeMin = Math.min(STICKY_NOTE_MIN_FONT_SIZE, baseFontSize);
   const maxWidth = Math.max(baseWidth - STICKY_NOTE_PADDING * 2, 1);
-  const maxHeight = Math.max(baseHeight - STICKY_NOTE_BODY_INSET_Y, 0);
-  const { fontFamily, lineHeight } = textElement;
-
-  const fit = (fontSize: number): FontFit => {
-    const font = getFontString({ fontFamily, fontSize });
-    const text = wrapText(originalText, font, maxWidth);
-    return { text, fontSize, ...measureText(text, font, lineHeight) };
+  const font = getFontString({
+    fontFamily: textElement.fontFamily,
+    fontSize: baseFontSize,
+  });
+  const text = wrapText(originalText, font, maxWidth);
+  const fitted: FontFit = {
+    text,
+    fontSize: baseFontSize,
+    ...measureText(text, font, textElement.lineHeight),
   };
-
-  const isBlank = !originalText.trim();
-  const fitted: FontFit = isBlank
-    ? {
-        text: "",
-        fontSize: baseFontSize,
-        ...measureText(
-          "",
-          getFontString({ fontFamily, fontSize: baseFontSize }),
-          lineHeight,
-        ),
-      }
-    : fitStickyNoteFont(fit, {
-        baseFontSize,
-        fontSizeMin,
-        maxWidth,
-        maxHeight,
-        warmStart: textElement.fontSize,
-      });
-
-  const height = isBlank
-    ? baseHeight
-    : Math.max(baseHeight, fitted.height + STICKY_NOTE_BODY_INSET_Y);
+  const height = baseHeight;
   const nextContainer = {
     ...getPositionAfterHeightChange(container, height, anchor),
     width: baseWidth,

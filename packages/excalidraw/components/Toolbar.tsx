@@ -6,6 +6,8 @@ import { KEYS } from "@excalidraw/common";
 import { useTunnels } from "../context/tunnels";
 import { t } from "../i18n";
 
+import { StoryAIButton } from "./StoryAI";
+
 import { useEditorInterface, useStylesPanelMode } from "./App";
 import { HintViewer } from "./HintViewer";
 import { Island } from "./Island";
@@ -314,6 +316,7 @@ export const Toolbar = ({
           style={{ marginLeft: "0.25rem" }}
         />
 
+        {app.props.aiEnabled !== false && <StoryAIButton app={app} />}
         <ExtraToolsDropdown
           app={app}
           activeTool={activeTool}
