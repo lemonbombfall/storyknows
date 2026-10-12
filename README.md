@@ -94,6 +94,16 @@ DEEPSEEK_MODEL=deepseek-chat
 
 详细接口、限制和部署说明见 [AI 写作说明](docs/story-ai.md)。
 
+### Cloudflare Workers 部署
+
+仓库根目录的 `wrangler.jsonc` 指向前端构建产物，避免 Wrangler 在 monorepo 根目录自动检测应用失败。Cloudflare Builds 使用以下设置：
+
+- 根目录：仓库根目录。
+- 构建命令：`yarn build`。
+- 部署命令：`npx wrangler deploy`。
+
+该配置部署 `excalidraw-app/build` 静态资源，并为前端路由启用 SPA 回退。它不会自动部署 `api/story-ai.ts`；AI 功能仍需单独接入服务端。
+
 ## 开发与验证
 
 React + TypeScript + Vite；画布、元素与编辑交互沿用 Excalidraw 工程。AI 返回结构化数据，由前端创建画布元素，不通过模型直接操作画布。
